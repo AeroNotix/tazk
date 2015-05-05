@@ -1,6 +1,6 @@
 {application, tazk,
  [
-  {description, ""},
+  {description, "ZooKeeper task scheduling"},
   {vsn, "1"},
   {registered, []},
   {applications, [
