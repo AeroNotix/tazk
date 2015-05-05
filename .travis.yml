@@ -15,6 +15,9 @@ before_script:
 after_script:
   - "sudo service zookeeper-server stop"
 
+after_failure:
+  - "cat logs/raw.log"
+
 script: make deps compile test
 
 language: erlang
