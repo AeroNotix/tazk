@@ -1,5 +1,7 @@
 -module(tazk).
 
+-include("tazk.hrl").
+
 -export([submit/2]).
 -export([delete_all_tasks/1]).
 -export([ls/1]).
@@ -69,6 +71,6 @@ delete_task(Pid, Base, Task) when is_list(Task) ->
     ok.
 
 task_paths(P) when is_list(P) ->
-    First = "/" ++ P,
+    First = ?TAZK_BASE_PATH ++ "/" ++ P,
     Full = First ++ "/task",
     {First, Full}.
