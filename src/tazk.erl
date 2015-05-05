@@ -7,20 +7,20 @@
 -export([ls/1]).
 
 
-submit(TaskGroup, TaskData)
-  when is_list(TaskGroup) andalso is_binary(TaskData) ->
+submit(TaskGroup, {M, F, A}=MFA)
+  when is_list(TaskGroup) andalso is_atom(M) andalso is_atom(F)
+       andalso is_list(A) ->
     case tazk_utils:create_connection() of
         {ok, Pid} ->
             try
+                TaskData = term_to_binary(MFA),
                 submit(Pid, TaskGroup, TaskData)
             after
                 ezk:end_connection(Pid, normal)
             end;
         {error, no_server_reached} = E->
             E
-    end;
-submit(TaskGroup, TaskData) when is_list(TaskGroup) ->
-    submit(TaskGroup, term_to_binary(TaskData)).
+    end.
 
 submit(Pid, TaskGroup, TaskData)
   when is_pid(Pid) andalso is_list(TaskGroup) andalso is_binary(TaskData) ->
