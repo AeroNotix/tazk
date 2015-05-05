@@ -156,8 +156,8 @@ kick_off_next_task(#state{zk_conn=Pid, task_group=TG, pending_tasks=PendingTasks
                     io:format("~p~n", [E]),
                     {ok, NextState}
             end;
-        {empty, {[], []}} ->
-            {ok, State}
+        {empty, EmptyQueue} ->
+            {ok, State#state{pending_tasks=EmptyQueue}}
     end.
 
 b2t(<<>>) ->
