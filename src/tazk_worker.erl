@@ -29,6 +29,10 @@ init([TaskGroup]) ->
     case tazk:lock_task_group(Pid, TaskGroup) of
         ok ->
             PendingTasks = get_pending_tasks(Pid, TaskGroup),
+            %% TODO: Kick off the first task here, monitor it for
+            %% normal return, on normal return, mark it as done. The
+            %% task itself should update some state somewhere to say
+            %% it is done.
             {ok, #state{zk_conn=Pid, task_group=TaskGroup, pending_tasks=PendingTasks}};
         {error, lock_failed} ->
             %% TODO: Make this a gen_fsm which waits until some other
