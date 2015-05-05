@@ -15,18 +15,19 @@
 -define(SERVER, ?MODULE).
 -define(WATCH_TAG, new_task_group).
 
--record(state, {zk_conn :: pid(), seen :: set()}).
+-record(state, {
+          zk_conn :: pid(),
+          seen :: set()
+         }).
 
 
 start_link() ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
 init([]) ->
-    {ok, Pid} = tazk_utils:create_connection(),
-    {ok, TaskGroups} = ezk:ls(Pid, ?TAZK_BASE_PATH, self(), ?WATCH_TAG),
-    [ok = spawn_worker_for_group(TaskGroup) || TaskGroup <- TaskGroups],
-    TaskSet = sets:from_list(TaskGroups),
-    {ok, #state{zk_conn=Pid, seen=TaskSet}}.
+    %% The other supervision tree needs to be up.
+    self() ! do_init,
+    {ok, do_init}.
 
 handle_call(_Request, _From, State) ->
     Reply = ok,
@@ -39,9 +40,16 @@ handle_info({?WATCH_TAG, {?TAZK_BASE_PATH, child_changed, _}},
             #state{zk_conn=Pid, seen=Seen}=State) ->
     {ok, TaskGroups} = ezk:ls(Pid, ?TAZK_BASE_PATH, self(), ?WATCH_TAG),
     NewTasks = new_task_groups(Seen, TaskGroups),
-    [ok = spawn_worker_for_group(TaskGroup) || TaskGroup <- NewTasks],
-    NextSeen = update_task_groups(Seen, NewTasks),
-    {noreply, State#state{seen=NextSeen}}.
+    io:format("new ~p~n", [NewTasks]),
+    NextSeen =
+        lists:foldl(fun spawn_workers/2, Seen, NewTasks),
+    {noreply, State#state{seen=NextSeen}};
+handle_info(do_init, do_init) ->
+    {ok, Pid} = tazk_utils:create_connection(),
+    {ok, NewTasks} = ezk:ls(Pid, ?TAZK_BASE_PATH, self(), ?WATCH_TAG),
+    NextSeen  =
+        lists:foldl(fun spawn_workers/2, sets:new(), NewTasks),
+    {noreply, #state{zk_conn=Pid, seen=NextSeen}}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -49,16 +57,16 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-spawn_worker_for_group(TaskGroup) ->
-    io:format("Spawning worker for task: ~p~n", [TaskGroup]),
-    %% Spawn and link to workers here.
-    ok.
-
 new_task_groups(Current, New) ->
     sets:to_list(sets:subtract(sets:from_list(New), Current)).
 
-update_task_groups(Current, New) ->
-    lists:foldl(
-      fun(E, S) ->
-              sets:add_element(E, S)
-      end, Current, New).
+spawn_worker_for_group(TaskGroup) ->
+    tazk_task_sup:start_child(TaskGroup).
+
+spawn_workers(TaskGroup, SeenSet) ->
+    case spawn_worker_for_group(TaskGroup) of
+        {error, already_started} ->
+            SeenSet;
+        {ok, _WorkerPid} ->
+            sets:add_element(TaskGroup, SeenSet)
+    end.

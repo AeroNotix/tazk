@@ -2,9 +2,11 @@
 
 -include("tazk.hrl").
 
--export([submit/2]).
 -export([delete_all_tasks/1]).
+-export([lock_task_group/2]).
+-export([task_paths/1]).
 -export([ls/1]).
+-export([submit/2]).
 
 
 submit(TaskGroup, {M, F, A}=MFA)
@@ -64,7 +66,18 @@ delete_task(Pid, Base, Task) when is_list(Task) ->
     {ok, _} = ezk:delete(Pid, Base ++ "/" ++ Task),
     ok.
 
-task_paths(P) when is_list(P) ->
-    First = ?TAZK_BASE_PATH ++ "/" ++ P,
+task_paths(TaskGroup) when is_list(TaskGroup) ->
+    First = ?TAZK_BASE_PATH ++ "/" ++ TaskGroup,
     Full = First ++ "/task",
-    {First, Full}.
+    {First, Full};
+task_paths(TaskGroup) when is_binary(TaskGroup) ->
+    task_paths(binary_to_list(TaskGroup)).
+
+lock_task_group(Pid, TaskGroup) ->
+    Path = ?TAZK_LOCK_PATH ++ "/" ++ TaskGroup,
+    case ezk:create(Pid, Path, <<>>, e) of
+        {error, dir_exists} ->
+            {error, lock_failed};
+        {ok, _} ->
+            ok
+    end.
