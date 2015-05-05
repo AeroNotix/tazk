@@ -46,23 +46,19 @@ do_submit(Pid, TaskPath, TaskData) ->
 
 ls(TaskGroup) ->
     {Base, _} = task_paths(TaskGroup),
-    {ok, Pid} = tazk_utils:create_connection(),
-    try
-        ezk:ls(Pid, Base)
-    after
-        ezk:end_connection(Pid, normal)
-    end.
+    ListChildren = fun(Pid) -> ezk:ls(Pid, Base) end,
+    tazk_utils:with_connection(ListChildren).
 
 delete_all_tasks(TaskGroup) ->
-    {ok, Pid} = tazk_utils:create_connection(),
     {Base, _} = task_paths(TaskGroup),
-    {ok, Tasks} = ezk:ls(Pid, Base),
-    try
-        [ok = delete_task(Pid, Base, Task) || Task <- Tasks],
-        ok
-    after
-        ezk:end_connection(Pid, normal)
-    end.
+    DeleteTasks =
+        fun(Pid) ->
+                {ok, Tasks} = ezk:ls(Pid, Base),
+                [ok = delete_task(Pid, Base, Task) || Task <- Tasks],
+                ok
+        end,
+    tazk_utils:with_connection(DeleteTasks).
+
 
 delete_task(Pid, Base, Task) when is_binary(Task) ->
     delete_task(Pid, Base, binary_to_list(Task));
