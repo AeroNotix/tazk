@@ -37,8 +37,6 @@ submit(Pid, TaskGroup, TaskData)
 do_submit(Pid, TaskPath, TaskData) ->
     case ezk:create(Pid, TaskPath, TaskData, s) of
         {error, no_zk_connection} = E ->
-            %% Here we should see if the node was created. It's
-            %% sequential, how?
             E;
         {ok, _} ->
             ok
