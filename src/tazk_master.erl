@@ -65,7 +65,8 @@ spawn_worker_for_group(TaskGroup) ->
 
 spawn_workers(TaskGroup, SeenSet) ->
     case spawn_worker_for_group(TaskGroup) of
-        {error, already_started} ->
+        {error, normal} ->
+            io:format("Worker already exists for: ~p~n", [TaskGroup]),
             SeenSet;
         {ok, _WorkerPid} ->
             sets:add_element(TaskGroup, SeenSet)

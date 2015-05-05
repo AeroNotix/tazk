@@ -5,6 +5,7 @@
 -export([delete_all_tasks/1]).
 -export([lock_task_group/2]).
 -export([task_paths/1]).
+-export([full_task_path/2]).
 -export([ls/1]).
 -export([submit/2]).
 
@@ -73,6 +74,11 @@ task_paths(TaskGroup) when is_list(TaskGroup) ->
 task_paths(TaskGroup) when is_binary(TaskGroup) ->
     task_paths(binary_to_list(TaskGroup)).
 
+full_task_path(TaskGroup, TaskPath)  ->
+    TGL = make_list(TaskGroup),
+    TPL = make_list(TaskPath),
+    ?TAZK_BASE_PATH ++ "/" ++ TGL ++ "/" ++ TPL.
+
 lock_task_group(Pid, TaskGroup) ->
     Path = ?TAZK_LOCK_PATH ++ "/" ++ TaskGroup,
     case ezk:create(Pid, Path, <<>>, e) of
@@ -81,3 +87,8 @@ lock_task_group(Pid, TaskGroup) ->
         {ok, _} ->
             ok
     end.
+
+make_list(B) when is_binary(B) ->
+    binary_to_list(B);
+make_list(L) when is_list(L) ->
+    L.
