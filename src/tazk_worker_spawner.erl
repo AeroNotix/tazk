@@ -64,8 +64,7 @@ handle_info({?WATCH_TAG, {_TaskPath, child_changed, _}},
             undefined ->
                 {ok, NS} = kick_off_next_task(NextState0),
                 NS;
-            %% the cloudi must flow. TODO: Turn into something more weidly
-            {_, {_, _, {_, _, _}}} ->
+            _Other ->
                 NextState0
         end,
     {noreply, NextState1};
