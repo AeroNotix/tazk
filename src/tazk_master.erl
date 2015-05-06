@@ -40,7 +40,6 @@ handle_info({?WATCH_TAG, {?TAZK_BASE_PATH, child_changed, _}},
             #state{zk_conn=Pid, seen=Seen}=State) ->
     {ok, TaskGroups} = ezk:ls(Pid, ?TAZK_BASE_PATH, self(), ?WATCH_TAG),
     NewTasks = new_task_groups(Seen, TaskGroups),
-    io:format("new ~p~n", [NewTasks]),
     NextSeen =
         lists:foldl(fun spawn_workers/2, Seen, NewTasks),
     {noreply, State#state{seen=NextSeen}};
@@ -66,7 +65,7 @@ spawn_worker_for_group(TaskGroup) ->
 spawn_workers(TaskGroup, SeenSet) ->
     case spawn_worker_for_group(TaskGroup) of
         {error, normal} ->
-            io:format("Worker already exists for: ~p~n", [TaskGroup]),
+            lager:warning("Worker already exists for: ~p~n", [TaskGroup]),
             SeenSet;
         {ok, _WorkerPid} ->
             sets:add_element(TaskGroup, SeenSet)

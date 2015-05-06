@@ -102,7 +102,6 @@ sort_tasks(Tasks) ->
                 TaskIdA < TaskIdB
         end,
     SortedTasks = lists:sort(SortTaskIds, Tasks),
-    io:format("~p~n", [SortedTasks]),
     queue:from_list(SortedTasks).
 
 get_task_id(<<"task", Rest/binary>>) ->
