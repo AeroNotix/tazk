@@ -6,7 +6,8 @@
   {applications, [
                   kernel,
                   stdlib,
-                  ezk
+                  ezk,
+                  lager
                  ]},
   {mod, { tazk_app, []}},
   {env, []}

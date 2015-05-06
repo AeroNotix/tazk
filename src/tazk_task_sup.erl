@@ -8,7 +8,7 @@
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
--define(CHILD_MOD, tazk_worker).
+-define(CHILD_MOD, tazk_worker_spawner).
 
 
 start_link() ->

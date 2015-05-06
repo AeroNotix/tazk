@@ -6,6 +6,8 @@
 -export([lock_task_group/2]).
 -export([task_paths/1]).
 -export([full_task_path/2]).
+-export([task_worker_path/1]).
+-export([task_worker_path_to_result_path/1]).
 -export([ls/1]).
 -export([submit/2]).
 
@@ -13,17 +15,23 @@
 submit(TaskGroup, {M, F, A}=MFA)
   when is_list(TaskGroup) andalso is_atom(M) andalso is_atom(F)
        andalso is_list(A) ->
-    case tazk_utils:create_connection() of
-        {ok, Pid} ->
-            try
-                TaskData = term_to_binary(MFA),
-                submit(Pid, TaskGroup, TaskData)
-            after
-                ezk:end_connection(Pid, normal)
-            end;
-        {error, no_server_reached} = E->
-            E
+    case erlang:function_exported(M, F, 1) of
+        false ->
+            {error, not_a_function};
+        true ->
+            case tazk_utils:create_connection() of
+                {ok, Pid} ->
+                    try
+                        TaskData = term_to_binary(MFA),
+                        submit(Pid, TaskGroup, TaskData)
+                    after
+                        ezk:end_connection(Pid, normal)
+                    end;
+                {error, no_server_reached} = E->
+                    E
+            end
     end.
+
 
 submit(Pid, TaskGroup, TaskData)
   when is_pid(Pid) andalso is_list(TaskGroup) andalso is_binary(TaskData) ->
@@ -87,6 +95,13 @@ lock_task_group(Pid, TaskGroup) ->
         {ok, _} ->
             ok
     end.
+
+task_worker_path(Task) ->
+    TL = make_list(Task),
+    ?TAZK_WORKER_PATH ++ "/" ++ TL.
+
+task_worker_path_to_result_path("/tazk_workers/" ++ TId) ->
+    ?TAZK_RESULT_PATH ++ "/" ++ TId.
 
 make_list(B) when is_binary(B) ->
     binary_to_list(B);

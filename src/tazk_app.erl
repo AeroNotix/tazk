@@ -7,7 +7,8 @@
 -export([start/2, stop/1]).
 
 start(_StartType, _StartArgs) ->
-    AllPaths = [?TAZK_BASE_PATH, ?TAZK_LOCK_PATH],
+    AllPaths = [?TAZK_BASE_PATH, ?TAZK_LOCK_PATH,
+                ?TAZK_WORKER_PATH, ?TAZK_RESULT_PATH],
     EnsureBasePath =
         fun(Pid) ->
                 [begin
