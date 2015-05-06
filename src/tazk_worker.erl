@@ -56,7 +56,7 @@ handle_info(start_task,
             write_result(Anything, TaskPath, State)
     catch
         E:R ->
-            write_result({E,R}, TaskPath, State)
+            write_result({E, R}, TaskPath, State)
     after
         ok = ezk:end_connection(Pid, normal)
     end,
