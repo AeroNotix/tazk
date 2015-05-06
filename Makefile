@@ -26,4 +26,5 @@ test:
 	$(REBAR) skip_deps=true ct
 
 dialyzer: compile
-	@dialyzer -Wno_undefined_callbacks
+	@dialyzer -Wno_undefined_callbacks \
+		--apps ebin
