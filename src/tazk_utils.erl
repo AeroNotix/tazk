@@ -6,7 +6,10 @@
 
 create_connection() ->
     Servers = application:get_env(tazk, zookeeper_servers, []),
-    ezk:start_connection(Servers).
+    %% we pass self() to it because it monitors this pid and closes
+    %% the connection when we die.
+    %% Further details: https://gist.github.com/AeroNotix/59b049ae8481eaeb88aa
+    ezk:start_connection(Servers, [self()]).
 
 did_create({ok, _}) ->
     ok;
