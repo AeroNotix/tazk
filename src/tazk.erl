@@ -6,7 +6,7 @@
 -export([lock_task_group/2]).
 -export([task_paths/1]).
 -export([full_task_path/2]).
--export([task_worker_path/1]).
+-export([task_worker_path/2]).
 -export([task_worker_path_to_result_path/1]).
 -export([ls/1]).
 -export([submit/2]).
@@ -96,9 +96,12 @@ lock_task_group(Pid, TaskGroup) ->
             ok
     end.
 
-task_worker_path(Task) ->
+task_worker_path(TaskGroup, Task) ->
+    %% TODO, make this return a nested path,
+    %% needs more work to create before assigning work
     TL = make_list(Task),
-    ?TAZK_WORKER_PATH ++ "/" ++ TL.
+    TGL = make_list(TaskGroup),
+    ?TAZK_WORKER_PATH ++ "/" ++ TGL ++ TL.
 
 task_worker_path_to_result_path("/tazk_workers/" ++ TId) ->
     ?TAZK_RESULT_PATH ++ "/" ++ TId.

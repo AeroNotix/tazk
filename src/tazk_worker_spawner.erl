@@ -69,7 +69,7 @@ handle_info({?WATCH_TAG, {_TaskPath, child_changed, _}},
         end,
     {noreply, NextState1};
 handle_info({?WORKER_TASK_CHANGED, {TaskWorkerPath, node_deleted, _}=TaskInfo},
-             #state{zk_conn=Pid}=State) ->
+             #state{zk_conn=Pid, in_flight_request=TaskWorkerPath}=State) ->
     ResultPath = tazk:task_worker_path_to_result_path(TaskWorkerPath),
     case ezk:get(Pid, ResultPath) of
         {ok, {Data, _}} ->
@@ -80,6 +80,8 @@ handle_info({?WORKER_TASK_CHANGED, {TaskWorkerPath, node_deleted, _}=TaskInfo},
             ok
     end,
     lager:debug("Pending task completed", [TaskInfo]),
+    {ok, NextState} = kick_off_next_task(State#state{in_flight_request=undefined}),
+    {noreply, NextState}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -106,8 +108,8 @@ sort_tasks(Tasks) ->
 get_task_id(<<"task", Rest/binary>>) ->
     binary_to_integer(Rest).
 
-kick_off_next_task(#state{zk_conn=Pid, task_group=TG, pending_tasks=PendingTasks}=State) ->
-    %% TODO: Learn how to program
+kick_off_next_task(#state{zk_conn=Pid, task_group=TG, pending_tasks=PendingTasks,
+                          in_flight_request=undefined}=State) ->
     case queue:out(PendingTasks) of
         {{value, Task}, RestPending} ->
             NextState = State#state{pending_tasks=RestPending},
@@ -115,9 +117,12 @@ kick_off_next_task(#state{zk_conn=Pid, task_group=TG, pending_tasks=PendingTasks
             case ezk:get(Pid, TaskPath) of
                 {ok, {Data, _}} ->
                     {M, F, A} = MFA = binary_to_term(Data),
-                    case tazk_worker:start(Task, M, F, A) of
+                    case tazk_worker:start(TG, Task, M, F, A) of
                         {ok, _} ->
                             monitor_worker_node(Task, NextState);
+                        {error, normal} ->
+                            ok = delete_task(Task, NextState),
+                            kick_off_next_task(NextState);
                         {error, _} = E ->
                             lager:error("Error spawning tazk_worker: ~p", [{E, MFA, TaskPath}]),
                             ok = delete_task(Task, NextState),
@@ -129,22 +134,24 @@ kick_off_next_task(#state{zk_conn=Pid, task_group=TG, pending_tasks=PendingTasks
                     {ok, NextState}
             end;
         {empty, EmptyQueue} ->
-            {ok, State#state{pending_tasks=EmptyQueue}}
+            {ok, State#state{pending_tasks=EmptyQueue, in_flight_request=undefined}}
     end.
 
-monitor_worker_node(Task, #state{zk_conn=Pid}=State) ->
-    TaskWorkerPath = tazk:task_worker_path(Task),
+monitor_worker_node(Task, #state{task_group=TaskGroup, zk_conn=Pid}=State) ->
+    TaskWorkerPath = tazk:task_worker_path(TaskGroup, Task),
     case ezk:exists(Pid, TaskWorkerPath, self(), ?WORKER_TASK_CHANGED) of
         {ok, _} ->
-            {ok, State#state{in_flight_request=123}};
+            {ok, State#state{in_flight_request=TaskWorkerPath}};
         {error, no_dir} ->
+            NextState = State#state{in_flight_request=undefined},
             case lookup_result_for_worker(Task, State) of
                 {ok, _Result} ->
                     %% Post to TaskGroup notifications
                     ok = delete_task(Task, State),
-                    {ok, State};
+                    {ok, NextState};
                 {error, no_result} ->
-                    {ok, State}
+                    ok = delete_task(Task, State),
+                    {ok, NextState}
             end
     end.
 

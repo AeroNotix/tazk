@@ -7,7 +7,7 @@
 -export([handle_cast/2]).
 -export([handle_info/2]).
 -export([init/1]).
--export([start/4]).
+-export([start/5]).
 -export([terminate/2]).
 
 
@@ -19,20 +19,26 @@
           mfa :: {atom(), atom(), list()}
          }).
 
-start(Task, M,F,A) ->
-    gen_server:start(?MODULE, [Task, M,F,A], []).
+start(TaskGroup, Task, M,F,A) ->
+    gen_server:start(?MODULE, [TaskGroup, Task, M,F,A], []).
 
-init([Task, M, F, A]) ->
+init([TaskGroup, Task, M, F, A]) ->
     lager:debug("start task: ~p~n", [{Task, M, F, A}]),
     {ok, Pid} = tazk_utils:create_connection(),
-    TaskWorkerPath = tazk:task_worker_path(Task),
-    NodeBin = term_to_binary(node()),
-    case ezk:create(Pid, TaskWorkerPath, NodeBin, e) of
-        {ok, TaskWorkerPath} ->
-            self() ! start_task,
-            {ok, #state{task_path=TaskWorkerPath, zk_conn=Pid, mfa={M, F, A}}};
-        {error, Reason} ->
-            {stop, Reason}
+    TaskWorkerPath = tazk:task_worker_path(TaskGroup, Task),
+    case result_already_exists(Pid, TaskWorkerPath) of
+        false ->
+            %% TODO Add time created/task metadarta
+            NodeBin = term_to_binary(node()),
+            case ezk:create(Pid, TaskWorkerPath, NodeBin, e) of
+                {ok, TaskWorkerPath} ->
+                    self() ! start_task,
+                    {ok, #state{task_path=TaskWorkerPath, zk_conn=Pid, mfa={M, F, A}}};
+                {error, Reason} ->
+                    {stop, Reason}
+            end;
+        true ->
+            {stop, normal}
     end.
 
 handle_call(_Request, _From, State) ->
@@ -67,3 +73,13 @@ write_result(Term, TaskPath, #state{zk_conn=Pid}) ->
     TermBin = term_to_binary(Term),
     {ok, ResultPath} = ezk:create(Pid, ResultPath, TermBin),
     ok.
+
+%% TODO refactor to take state with pid, not pid directly
+result_already_exists(Pid, TaskPath) ->
+    ResultPath = tazk:task_worker_path_to_result_path(TaskPath),
+    case ezk:exists(Pid, ResultPath) of
+        {error, no_dir} ->
+            false;
+        {ok, _} ->
+            true
+    end.
