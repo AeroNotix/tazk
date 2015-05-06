@@ -81,17 +81,6 @@ handle_info({?WORKER_TASK_CHANGED, {TaskWorkerPath, node_deleted, _}=TaskInfo},
             ok
     end,
     lager:debug("Pending task completed", [TaskInfo]),
-    {noreply, State};
-handle_info({'DOWN', Ref, process, Pid, normal},
-           #state{zk_conn=ZKPid, in_flight_request={Pid, {TaskPath, Ref, _}}}=State) ->
-    {ok, TaskPath} = ezk:delete(ZKPid, TaskPath),
-    NextState0 = State#state{in_flight_request=undefined},
-    {ok, NextState1} = kick_off_next_task(NextState0),
-    {noreply, NextState1};
-handle_info({'DOWN', _, process, _}, State) ->
-    %% Do we want to handle this like this? i.e. down messages from
-    %% the not current IFR?
-    {noreply, State}.
 
 terminate(_Reason, _State) ->
     ok.
