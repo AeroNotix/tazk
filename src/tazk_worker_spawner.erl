@@ -20,7 +20,7 @@
           zk_conn :: pid(),
           task_group :: binary(),
           pending_tasks :: queue(),
-          in_flight_request :: {pid(), {binary(), reference(), {module(), atom(), list()}}}
+          in_flight_request :: list()
          }).
 
 reply(Worker, Msg) ->
