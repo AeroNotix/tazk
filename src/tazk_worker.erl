@@ -28,8 +28,8 @@ init([TaskGroup, Task, M, F, A]) ->
     TaskWorkerPath = tazk:task_worker_path(TaskGroup, Task),
     case result_already_exists(Pid, TaskWorkerPath) of
         false ->
-            %% TODO Add time created/task metadarta
-            NodeBin = term_to_binary(node()),
+            NowMs = tic:now_to_epoch_msecs(),
+            NodeBin = term_to_binary({node(), NowMs}),
             case ezk:create(Pid, TaskWorkerPath, NodeBin, e) of
                 {ok, TaskWorkerPath} ->
                     self() ! start_task,
@@ -70,7 +70,8 @@ code_change(_OldVsn, State, _Extra) ->
 
 write_result(Term, TaskPath, #state{zk_conn=Pid}) ->
     ResultPath = tazk:task_worker_path_to_result_path(TaskPath),
-    TermBin = term_to_binary(Term),
+    NowMs = tic:now_to_epoch_msecs(),
+    TermBin = term_to_binary({Term, NowMs}),
     {ok, ResultPath} = ezk:create(Pid, ResultPath, TermBin),
     ok.
 
