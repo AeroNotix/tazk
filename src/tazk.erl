@@ -15,7 +15,7 @@
 submit(TaskGroup, {M, F, A}=MFA)
   when is_list(TaskGroup) andalso is_atom(M) andalso is_atom(F)
        andalso is_list(A) ->
-    case erlang:function_exported(M, F, 1) of
+    case erlang:function_exported(M, F, length(A)) of
         false ->
             {error, not_a_function};
         true ->
