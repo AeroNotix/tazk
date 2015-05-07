@@ -33,7 +33,7 @@ init([TaskGroup]) ->
     {ok, Pid} = tazk_utils:create_connection(),
     case tazk:lock_task_group(Pid, TaskGroup) of
         ok ->
-            PendingTasks = get_pending_tasks(Pid, TaskGroup),
+            PendingTasks = get_pending_tasks(Pid, queue:new(), TaskGroup),
             %% TODO: Kick off the first task here, monitor it for
             %% normal return, on normal return, mark it as done. The
             %% task itself should update some state somewhere to say
@@ -56,8 +56,7 @@ handle_cast(_Msg, State) ->
 
 handle_info({?WATCH_TAG, {_TaskPath, child_changed, _}},
            #state{zk_conn=Pid, task_group=TG, pending_tasks=PT, in_flight_request=IFR}=State) ->
-    NewPendingTasks = get_pending_tasks(Pid, TG),
-    NextQueue = queue:join(PT, NewPendingTasks),
+    NextQueue = get_pending_tasks(Pid, PT, TG),
     NextState0 = State#state{pending_tasks=NextQueue},
     NextState1 =
         case IFR of
@@ -89,10 +88,12 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-get_pending_tasks(Pid, TaskGroup) ->
+get_pending_tasks(Pid, CurrentTasks, TaskGroup) ->
+    CTL = queue:to_list(CurrentTasks),
     {Base, _} = tazk:task_paths(TaskGroup),
     {ok, Tasks} = ezk:ls(Pid, Base, self(), ?WATCH_TAG),
-    sort_tasks(Tasks).
+    AllTasks = lists:append(CTL, Tasks),
+    sort_tasks(lists:usort(AllTasks)).
 
 sort_tasks(Tasks) ->
     SortTaskIds =
