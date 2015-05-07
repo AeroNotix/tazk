@@ -147,10 +147,10 @@ monitor_worker_node(Task, #state{task_group=TaskGroup, zk_conn=Pid}=State) ->
             case lookup_result_for_worker(Task, State) of
                 {ok, _Result} ->
                     %% Post to TaskGroup notifications
-                    ok = delete_task(Task, State),
+                    ok = delete_task(Task, NextState),
                     {ok, NextState};
                 {error, no_result} ->
-                    ok = delete_task(Task, State),
+                    ok = delete_task(Task, NextState),
                     {ok, NextState}
             end
     end.
