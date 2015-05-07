@@ -157,12 +157,8 @@ monitor_worker_node(Task, #state{task_group=TaskGroup, zk_conn=Pid}=State) ->
 
 delete_task(Task, #state{task_group=TG, zk_conn=Pid}) ->
     TaskPath = tazk:full_task_path(TG, Task),
-    case ezk:delete(Pid, TaskPath) of
-        {ok, TaskPath} ->
-            ok;
-        {error, no_dir} ->
-            ok
-    end.
+    {ok, TaskPath} = ezk:delete(Pid, TaskPath),
+    ok.
 
 lookup_result_for_worker(_Task, _State) ->
     %% TODO Look up result, clear task.
