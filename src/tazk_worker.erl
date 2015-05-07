@@ -58,7 +58,7 @@ handle_info(start_task,
         E:R ->
             write_result({E, R}, TaskPath, State)
     after
-        ok = ezk:end_connection(Pid, normal)
+        ok = ezk:end_connection(Pid)
     end,
     {stop, normal, State}.
 
