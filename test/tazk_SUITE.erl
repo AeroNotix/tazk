@@ -12,8 +12,6 @@ init_per_suite(Config) ->
                               crypto:rand_bytes(4)
                              ),
     ok = clear_test_tasks(),
-    %% ok = tazk:delete_all_tasks(Group),
-    %% ok = tazk:delete_group(Group),
     {ok, _} = application:ensure_all_started(tazk),
     tazk_test_module:call(self(), foo),
     wait_for_n(foo, 1),
