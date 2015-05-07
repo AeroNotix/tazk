@@ -13,6 +13,8 @@ init_per_suite(Config) ->
                              ),
     ok = clear_test_tasks(),
     {ok, _} = application:ensure_all_started(tazk),
+    %% We have to call the module first because otherwise
+    %% erlang:function_exported/3 doesn't work.
     tazk_test_module:call(self(), foo),
     wait_for_n(foo, 1),
     [{num_tasks, 100}, {task_group, Group}] ++ Config.
