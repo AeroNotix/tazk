@@ -68,14 +68,14 @@ handle_info({?WATCH_TAG, {_TaskPath, child_changed, _}},
         end,
     {noreply, NextState1};
 handle_info({?WORKER_TASK_CHANGED, {TaskWorkerPath, node_deleted, _}=TaskInfo},
-             #state{zk_conn=Pid, in_flight_request=TaskWorkerPath}=State) ->
+            #state{zk_conn=Pid, in_flight_request=TaskWorkerPath}=State) ->
     ResultPath = tazk:task_worker_path_to_result_path(TaskWorkerPath),
     case ezk:get(Pid, ResultPath) of
         {ok, {Data, _}} ->
-            lager:error("Fkn result: ~p", [Data]),
+            lager:error("Fkn result: ~p", [binary_to_term(Data)]),
             ok;
         {error, _} = E ->
-            lager:error("Fkn result: ~p", [E]),
+            lager:error("E: ~p", [E]),
             ok
     end,
     lager:debug("Pending task completed", [TaskInfo]),
@@ -130,7 +130,7 @@ kick_off_next_task(#state{zk_conn=Pid, task_group=TG, pending_tasks=PendingTasks
                     end;
                 {error, _} = E ->
                     %% TODO handle disconnection
-                    lager:error("Error getting data for tazk ~p~n", [E]),
+                    lager:error("Error getting data for tazk ~p~n", [{E, TaskPath}]),
                     {ok, NextState}
             end;
         {empty, EmptyQueue} ->
