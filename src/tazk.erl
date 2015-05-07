@@ -3,6 +3,7 @@
 -include("tazk.hrl").
 
 -export([delete_all_tasks/1]).
+-export([delete_group/1]).
 -export([lock_task_group/2]).
 -export([task_paths/1]).
 -export([full_task_path/2]).
@@ -62,12 +63,26 @@ delete_all_tasks(TaskGroup) ->
     {Base, _} = task_paths(TaskGroup),
     DeleteTasks =
         fun(Pid) ->
-                {ok, Tasks} = ezk:ls(Pid, Base),
-                [ok = delete_task(Pid, Base, Task) || Task <- Tasks],
-                ok
+                case ezk:ls(Pid, Base) of
+                    {ok, Tasks} ->
+                        [ok = delete_task(Pid, Base, Task) || Task <- Tasks],
+                        ok;
+                    {error, no_dir} ->
+                        ok
+                end
         end,
     tazk_utils:with_connection(DeleteTasks).
 
+delete_group(TaskGroup) ->
+    {Base, _} = task_paths(TaskGroup),
+    DeleteGroup =
+        fun(Pid) ->
+                case ezk:delete(Pid, Base) of
+                    {ok, Base} -> ok;
+                    {error, no_dir} -> ok
+                end
+        end,
+    tazk_utils:with_connection(DeleteGroup).
 
 delete_task(Pid, Base, Task) when is_binary(Task) ->
     delete_task(Pid, Base, binary_to_list(Task));
